@@ -1,0 +1,26 @@
+name: AID VPN Autopilot (Reset >= 3 devices)
+
+on:
+  schedule:
+    # Запуск каждые 30 минут
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Позволяет вручную запустить проверку из интерфейса GitHub в любой момент
+
+jobs:
+  check-and-reset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Check and Reset Script
+        env:
+          AID_TOKEN: ${{ secrets.AID_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node check_and_reset.mjs
