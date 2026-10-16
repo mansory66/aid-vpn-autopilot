@@ -2,8 +2,8 @@ name: AID VPN Autopilot (Reset >= 3 devices)
 
 on:
   schedule:
-    # Запуск каждые 30 минут
-    - cron: '*/30 * * * *'
+    # Запуск каждые 5 минут
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Позволяет вручную запустить проверку из интерфейса GitHub в любой момент
 
 jobs:
