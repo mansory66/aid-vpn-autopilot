@@ -1,6 +1,8 @@
 const AID_TOKEN = process.env.AID_TOKEN;
 const TG_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const ITERATIONS = Number(process.env.ITERATIONS || 12); // 12 проверок с шагом 5 минут = 1 час смены
+const INTERVAL_MS = Number(process.env.INTERVAL_MS || 5 * 60 * 1000); // 5 минут
 
 if (!AID_TOKEN) {
   console.error('❌ Ошибка: AID_TOKEN не задан в секретах репозитория.');
@@ -30,7 +32,7 @@ async function sendTelegram(text) {
   }
 }
 
-async function run() {
+async function checkOnce() {
   const headers = {
     'Authorization': `Bearer ${AID_TOKEN}`,
     'Accept': 'application/json',
@@ -78,8 +80,8 @@ async function run() {
       const clearData = await clearRes.json();
       if (clearData.success) {
         console.log(`✅ Привязки для ключа ${keyName} успешно сброшены!`);
-        const alertMsg = 
-          `🤖 *[Автопилот GitHub Actions]*\n\n` +
+        const alertMsg =
+          `🤖 *[Автопилот 24/7]*\n\n` +
           `⚠️ На ключе \`${keyName}\` было подключено *${count}* устройств (достигнут лимит).\n` +
           `✅ *Все привязки успешно сброшены!* Теперь можно подключать новые устройства.`;
         await sendTelegram(alertMsg);
@@ -92,7 +94,25 @@ async function run() {
   }
 }
 
-run().catch((err) => {
+async function runLoop() {
+  for (let i = 1; i <= ITERATIONS; i++) {
+    const now = new Date().toLocaleTimeString('ru-RU', { timeZone: 'Europe/Moscow' });
+    console.log(`\n⏱ [${now} МСК] Проверка ${i}/${ITERATIONS}...`);
+    try {
+      await checkOnce();
+    } catch (err) {
+      console.error(`⚠️ Ошибка при проверке ${i}/${ITERATIONS}:`, err.message);
+    }
+
+    if (i < ITERATIONS) {
+      console.log(`⏳ Ожидание 5 минут до следующей проверки...`);
+      await new Promise((r) => setTimeout(r, INTERVAL_MS));
+    }
+  }
+  console.log('\n🔄 Смена завершена, передаю эстафету следующему запуску...');
+}
+
+runLoop().catch((err) => {
   console.error('❌ Критическая ошибка:', err.message);
   process.exit(1);
 });

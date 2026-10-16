@@ -2,13 +2,18 @@ name: AID VPN Autopilot (Reset >= 3 devices)
 
 on:
   schedule:
-    # Запуск каждые 5 минут
-    - cron: '*/5 * * * *'
-  workflow_dispatch: # Позволяет вручную запустить проверку из интерфейса GitHub в любой момент
+    # Резервный будильник на случай перезагрузки серверов GitHub
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Мгновенный запуск (ручной или авто-эстафета)
+
+concurrency:
+  group: aid-vpn-autopilot
+  cancel-in-progress: false
 
 jobs:
   check-and-reset:
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,9 +23,20 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run Check and Reset Script
+      - name: Run 5-Minute Continuous Loop (12 checks / 1 hour)
         env:
           AID_TOKEN: ${{ secrets.AID_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: node check_and_reset.mjs
+
+      - name: Trigger Next Shift Automatically
+        if: always() && !cancelled()
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/check_vpn.yml/dispatches \
+            -d '{"ref":"main"}'
